@@ -18,10 +18,7 @@ import lombok.extern.log4j.Log4j;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * @author Tom Paulus
@@ -83,6 +80,8 @@ public class Extractor {
     }
 
     public void extract(final String outputFilePath) throws InterruptedException, IOException {
+        Stack<Future> completionStack = new Stack<>();
+
         log.info(String.format("Beginning Grade Extraction for Course \"%s\"", courseSelector));
 
         if (updateCourseList || DB.getInstance().size() == 0) updateCourseDB();
@@ -121,9 +120,10 @@ public class Extractor {
             if (matchedColumns.size() == 0) continue;
 
 
+            log.info("Starting User Fetch");
             for (CourseUser user : courseUsers) {
                 if (user.getCourseRoleId().equals("Student")) {
-                    userExecutor.submit(new startResultLine(user, course, matchedColumns));
+                    completionStack.push(userExecutor.submit(new startResultLine(user, course, matchedColumns)));
                 }
             }
         }
@@ -131,10 +131,23 @@ public class Extractor {
         userExecutor.shutdown();
         log.info("Waiting for User Fetch to complete");
         userExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+
+        log.info("Checking that all users are done");
+        while (!completionStack.empty()) {
+            while (!completionStack.pop().isDone()) {
+                log.debug("Extraction is not done, waiting...");
+                TimeUnit.SECONDS.sleep(1);
+            }
+        }
         log.info("User Fetch Completed");
 
-
+        log.info("Starting Grade Fetch");
         for (ResultLine resultLine : resultLines) {
+            if (resultLine == null) continue;
+            if (resultLine.getGrades() == null || resultLine.getGrades().size() == 0) {
+                log.error(String.format("No Columns defined for user %s - skipping", resultLine.getUser().getUserName()));
+                continue;
+            }
             for (Column column : resultLine.getGrades().keySet()) {
                 gradeExecutor.submit(new getScores(resultLine, column));
             }
@@ -143,6 +156,15 @@ public class Extractor {
         gradeExecutor.shutdown();
         log.info("Waiting for Grade Fetch to complete");
         gradeExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+
+        log.info("Checking that all columns are done");
+        while (!completionStack.empty()) {
+            while (!completionStack.pop().isDone()) {
+                log.debug("Extraction is not done, waiting...");
+                TimeUnit.SECONDS.sleep(1);
+            }
+        }
+
         log.info("Grade Fetch Completed");
 
         saveAsCSV(outputFilePath);
@@ -199,6 +221,7 @@ public class Extractor {
                     }}
             );
 
+            log.debug("Fetched User Profile - " + line);
             resultLines.add(line);
         }
     }
@@ -213,6 +236,7 @@ public class Extractor {
                     Gradebook.getUserScore(resultLine.getSourceCourse().getCourseId(),
                             column.getId(),
                             resultLine.getUser().getId()));
+            log.debug("Updated Result Line (changed col: " + column.getId() + ") - " + resultLine);
         }
     }
 

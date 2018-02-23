@@ -19,4 +19,13 @@ public class ResultLine {
     private User user;
     private Course sourceCourse;
     private Map<Column, Grade> grades;
+
+    @Override
+    public String toString() {
+        return "ResultLine{" +
+                "user=" + user +
+                ", sourceCourse=" + sourceCourse +
+                ", grades=" + grades.toString() +
+                '}';
+    }
 }
