@@ -67,7 +67,7 @@ public class Courses {
     }
 
     /**
-     * Get all enrolled users in a Blackboard Course. Requires "course.configure-properties.EXECUTE" permission.
+     * Get all enrolled users in a Blackboard Course. Requires "course.user.VIEW" permission.
      *
      * @param courseId {@link String} Course ID
      * @return {@link CourseUser[]} Course Users

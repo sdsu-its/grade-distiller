@@ -65,6 +65,6 @@ correctly:
 
 | Entitlement                         | Display Name in Blackboard                                     |
 | :---------------------------------- | :------------------------------------------------------------- |
-| course.configure-properties.EXECUTE | Course/Organization Control Panel (Customization) > Properties |
+| course.user.VIEW                    | Course/Organization Control Panel (Users and Groups) > Users |
 | course.gradebook.MODIFY             | Course/Organization Control Panel (Grade Center) > All Grading |
 | system.user.VIEW                    | Administrator Panel (Users) > Users                            |
